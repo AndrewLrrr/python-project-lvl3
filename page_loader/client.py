@@ -11,16 +11,25 @@ class RequestError(Exception):
     pass
 
 
+class RequestClientError(RequestError):
+    pass
+
+
+class RequestServerError(RequestError):
+    pass
+
+
 class RequestConnectionError(RequestError):
     pass
 
 
 def make_request(url: str, tries: int = 3, delay: int = 2) -> requests.Response:
+    # Делаем ретрай при ошибках сервера или при проблемах с коннектом
     while tries > 0:
         try:
             response = requests.get(url)
             raise_for_status(response)
-        except requests.ConnectionError as e:
+        except (RequestServerError, requests.ConnectionError) as e:
             tries -= 1
             if tries == 0:
                 raise RequestConnectionError('Connection error while connecting: {}'.format(str(e)))
@@ -41,6 +50,8 @@ def raise_for_status(response):
     else:
         reason = response.reason
 
+    error = RequestError
+
     if 200 < response.status_code < 300:
         http_error_msg = '{} is not OK status for url: {}'.format(
             response.status_code, response.url
@@ -53,10 +64,12 @@ def raise_for_status(response):
         http_error_msg = '{} Client Error: {} for url: {}'.format(
             response.status_code, reason, response.url
         )
+        error = RequestClientError
     elif 500 <= response.status_code < 600:
         http_error_msg = '{} Server Error: {} for url: {}'.format(
             response.status_code, reason, response.url
         )
+        error = RequestServerError
 
     if http_error_msg:
-        raise RequestError(http_error_msg)
+        raise error(http_error_msg)

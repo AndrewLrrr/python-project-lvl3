@@ -17,4 +17,4 @@ LOG_LEVELS = {
 }
 
 LOG_FORMAT = '%(asctime)s %(message)s'
-LOG_DATE_FORMAT = '%d/%m/%Y %H:%M:%S'
+LOG_DATE_FORMAT = '%H:%M:%S %d/%m/%Y'

@@ -2,8 +2,7 @@ import argparse
 import logging
 import sys
 
-
-from page_loader.loader import load_web_page, LoadPageError
+from page_loader.loader import load_resource, load_web_page, LoadPageError
 from page_loader.log_settings import INFO, LOG_LEVELS, LOG_FORMAT, LOG_DATE_FORMAT
 
 
@@ -12,18 +11,23 @@ def main():
     parser.add_argument('url')
     parser.add_argument(
         '-o', '--output',
-        help='set output directory',
+        help='Set output directory',
     )
     parser.add_argument(
         '-l', '--log-level',
         nargs='?',
         default=INFO,
         choices=sorted(LOG_LEVELS.keys()),
-        help='set log level',
+        help='Set log level',
     )
     parser.add_argument(
         '-f', '--log-file',
-        help='set log file',
+        help='Set log file',
+    )
+    parser.add_argument(
+        '-n', '--no-parse',
+        help='',
+        # ...
     )
 
     args = parser.parse_args()
@@ -35,11 +39,15 @@ def main():
         filename=args.log_file,
     )
 
+    # Выключаем парсинг, чтобы можно было при необходимости "дозагрузить"
+    # какие-то ресурсы дополнительно
+    handler = load_web_page if args.no_parse else load_resource
+
     try:
-        load_web_page(args.url, args.output)
+        handler(args.url, args.output)
     except LoadPageError as e:
-        print(f'{str(e)}. See log to details', file=sys.stderr)
+        print(f'{str(e)}. See log for details', file=sys.stderr)
 
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main() or 0)

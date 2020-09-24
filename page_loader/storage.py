@@ -3,30 +3,34 @@ import re
 from typing import Union
 from urllib.parse import urlparse
 
-URL_SYMBOLS_PATTERN = '^[]'
 DIRECTORY_ACCESS_RIGHTS = 0o755
 
-IS_FILE_PATTERN = re.compile(r'\.\w+$')
-SYMBOLS_PATTERN = re.compile(r'[^\w]+', re.IGNORECASE)
+SYMBOLS_PATTERN = re.compile(r'[^\w]+')
 
 
-def convert_url_to_file_path(url: str, is_html=True) -> str:
+class StorageError(Exception):
+    pass
+
+
+def convert_url_to_file_path(url: str) -> str:
     url_obj = urlparse(url)
-    path = url_obj.path
 
-    file_name = None
-    if IS_FILE_PATTERN.search(path):
-        path, file_name = path.rsplit('/', 1)
+    split_path = url_obj.path.rsplit('.', 1)
 
-    if not is_html:
-        path = '{}_files'.format(path)
+    if len(split_path) == 2:
+        path, ext = split_path
+    else:
+        path = split_path[0]
+        ext = None
 
-    if file_name:
-        file_name, ext = path.rsplit('.', 1)
-        file_name = '{}.{}'.format(SYMBOLS_PATTERN.sub(path, '-'), ext)
-        path = os.path.join(path, file_name)
+    if url_obj.netloc:
+        path = f'{url_obj.netloc}{path}'
 
-    if is_html and not IS_FILE_PATTERN.search(path):
+    path = SYMBOLS_PATTERN.sub('-', path)
+
+    if ext:
+        path = '{}.{}'.format(path, ext)
+    else:
         path = '{}.html'.format(path)
 
     return path
@@ -38,6 +42,10 @@ def store_data(file_path: str, data: Union[str, bytes]) -> int:
     if not os.path.exists(dir_path):
         os.makedirs(dir_path, DIRECTORY_ACCESS_RIGHTS)
 
-    mode = 'r' if isinstance(data, str) else 'rb'
-    with open(file_path, mode=mode, encoding='utf8') as f:
+    if not os.access(dir_path, os.W_OK):
+        raise StorageError(f'Directory {dir_path} is not writable')
+
+    mode = 'w' if isinstance(data, str) else 'wb'
+    encoding = 'utf8' if mode == 'w' else None
+    with open(file_path, mode=mode, encoding=encoding) as f:
         return f.write(data)

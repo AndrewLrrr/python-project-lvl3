@@ -1,5 +1,7 @@
 from typing import Dict, List
 
+from bs4 import BeautifulSoup
+
 from page_loader import parsers
 
 
@@ -15,5 +17,9 @@ PARSERS = {
 }
 
 
-def parse(html: str) -> Dict[List[str]]:
-    pass
+def parse(html: str) -> Dict[str, List[str]]:
+    soup = BeautifulSoup(html, 'html.parser')
+    return {
+        tag: parser.parse(soup)
+        for tag, parser in PARSERS.items()
+    }
