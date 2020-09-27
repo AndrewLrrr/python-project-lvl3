@@ -1,32 +1,19 @@
 import logging
 import os
-from collections import namedtuple
-from typing import List, Union
+from typing import Union
 from urllib.parse import urlparse
 
+from bs4 import BeautifulSoup
 from requests import Response
 
 from page_loader import client, storage
-from page_loader.parsers import html_parser
-
+from page_loader import html_handlers
 
 logger = logging.getLogger(__name__)
 
 
 class LoadPageError(Exception):
     pass
-
-
-def url_filter(url: str) -> bool:
-    # Собираем только локальные ресурсы (ссылки без указания домена)
-    url = urlparse(url)
-    return not url.scheme and not url.netloc
-
-
-def build_full_url(url_obj: namedtuple, resource_path: str) -> str:
-    return '{}://{}/{}'.format(
-        url_obj.scheme, url_obj.netloc, resource_path.lstrip('/')
-    )
 
 
 def validate_url(url: str) -> bool:
@@ -36,46 +23,75 @@ def validate_url(url: str) -> bool:
 
 def make_request_wrapper(url: str) -> Response:
     # Делаем запрос веб-ресурса, при ошибке пишем в лог,
-    # но не останавливаем загруску страницы, даем загрузится
-    # остальным ресурсам
+    # но не останавливаем загрузку страницы, даем загрузиться
+    # остальным ресурсам т.к. ошибка может быть не критичной,
+    # 302 или 404, например.
     try:
         return client.make_request(url)
     except client.RequestError as e:
         logger.exception(str(e))
 
 
-def store_data_wrapper(file_name: str, path: List[str], data: Union[str, bytes]) -> str:
+def store_data_wrapper(file_path: str, data: Union[str, bytes]) -> None:
     # Сохраняем файл на диске, при ошибке пишем в лог
-    # и останавливаем загрузку, т.к., веротяно, ошибка будет
+    # и останавливаем загрузку, т.к., вероятно, ошибка будет
     # аффектить все остальные файлы
-    file_path = os.path.join(*path, file_name)
-    file_path = os.path.abspath(file_path)
     try:
         storage.store_data(file_path, data)
-    except (storage.StorageError, IOError, OSError, PermissionError) as e:
+    except (IOError, OSError, PermissionError) as e:
         logger.exception(str(e))
         raise LoadPageError(str(e))
-    return file_path
 
 
-def collect_resources(content: str) -> List[str]:
-    return [
-        resource for resources in html_parser.parse(content).values()
-        for resource in resources
-    ]
+def assert_directory_wrapper(directory: str) -> None:
+    try:
+        storage.assert_directory(directory)
+    except storage.StorageError as e:
+        logger.exception(str(e))
+        raise LoadPageError(str(e))
 
 
-def load_resource(url: str, directory: str) -> None:
-    if not validate_url(url):
-        raise LoadPageError(f'Invalid url `{url}`')
+def build_full_resource_url(url: str, resource_url: str) -> str:
+    # Если url полный, возвращаем его
+    if resource_url.startswith('http'):
+        return resource_url
 
-    response = make_request_wrapper(url)
+    url_obj = urlparse(url)
 
-    file_name = storage.convert_url_to_file_path(url)
+    # Если путь абсолютный, добавляем протокол и домен
+    if resource_url.startswith('/'):
+        return '{}://{}{}'.format(
+            url_obj.scheme, url_obj.netloc, resource_url
+        )
 
-    file_path = store_data_wrapper(file_name, [directory], response.content)
+    # Если путь относительный, то добавляем протокол, домен и путь
+    return '{}://{}{}/{}'.format(
+        url_obj.scheme, url_obj.netloc, url_obj.path, resource_url
+    )
 
-    logger.info('Loaded resource `%s` -> `%s`', url, file_path)
+
+def load_resource(url: str, resource_url: str, directory: str) -> str:
+    logger.info('Start load resource `%s`', resource_url)
+
+    response = make_request_wrapper(build_full_resource_url(url, resource_url))
+
+    resource_subdir = storage.convert_url_to_dir_name(url)
+
+    resource_file_name = storage.convert_url_to_file_name(
+        resource_url, is_html=False
+    )
+
+    resource_file_path = os.path.join(resource_subdir, resource_file_name)
+
+    abs_resource_file_path = os.path.join(directory, resource_file_path)
+
+    store_data_wrapper(abs_resource_file_path, response.content)
+
+    logger.info(
+        'Resource loaded `%s` -> `%s`', resource_url, abs_resource_file_path
+    )
+
+    return resource_file_path
 
 
 def load_web_page(url: str, directory: str) -> None:
@@ -84,21 +100,30 @@ def load_web_page(url: str, directory: str) -> None:
 
     logger.info('Start load web page `%s` to `%s`', url, directory)
 
+    resources_to_replace = {}
+
+    directory = os.path.abspath(directory)
+
+    assert_directory_wrapper(directory)
+
     response = make_request_wrapper(url)
 
-    resources = filter(url_filter, collect_resources(response.text))
+    soup = BeautifulSoup(response.text, 'html.parser')
 
-    file_name = storage.convert_url_to_file_path(url)
+    resources = html_handlers.parse_html(soup)
 
-    file_path = store_data_wrapper(file_name, [directory], response.text)
+    for resource_tag, resource_urls in resources.items():
+        resources_to_replace[resource_tag] = {}
+        for resource_url in resource_urls:
+            resource_file_path = load_resource(url, resource_url, directory)
+            resources_to_replace[resource_tag][resource_url] = resource_file_path
 
-    logger.info('Loaded html `%s` -> `%s`', url, file_path)
+    html_handlers.modify_html(soup, resources_to_replace)
 
-    url_obj = urlparse(url)
+    file_name = storage.convert_url_to_file_name(url, is_html=True)
 
-    directory = os.path.join(directory, '{}_files'.format(file_path.split('.')[0]))
+    abs_file_path = os.path.join(directory, file_name)
 
-    for resource_path in resources:
-        load_resource(build_full_url(url_obj, resource_path), directory)
+    store_data_wrapper(abs_file_path, str(soup))
 
-    logger.info('Finish load web page')
+    logger.info('Web page loaded `%s` -> `%s`', url, abs_file_path)

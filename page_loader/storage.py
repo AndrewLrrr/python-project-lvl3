@@ -5,14 +5,14 @@ from urllib.parse import urlparse
 
 DIRECTORY_ACCESS_RIGHTS = 0o755
 
-SYMBOLS_PATTERN = re.compile(r'[^\w]+')
+SYMBOLS_PATTERN = re.compile(r'[^A-Za-z0-9]+')
 
 
 class StorageError(Exception):
     pass
 
 
-def convert_url_to_file_path(url: str) -> str:
+def convert_url_to_file_name(url: str, is_html: bool = False) -> str:
     url_obj = urlparse(url)
 
     split_path = url_obj.path.rsplit('.', 1)
@@ -23,12 +23,14 @@ def convert_url_to_file_path(url: str) -> str:
         path = split_path[0]
         ext = None
 
+    path = path.strip('/')
+
     if url_obj.netloc:
-        path = f'{url_obj.netloc}{path}'
+        path = f'{url_obj.netloc}/{path}'
 
     path = SYMBOLS_PATTERN.sub('-', path)
 
-    if ext:
+    if ext and not is_html:
         path = '{}.{}'.format(path, ext)
     else:
         path = '{}.html'.format(path)
@@ -36,14 +38,23 @@ def convert_url_to_file_path(url: str) -> str:
     return path
 
 
+def convert_url_to_dir_name(url: str, is_html: bool = False) -> str:
+    return '{}_files'.format(convert_url_to_file_name(url).split('.')[0])
+
+
+def assert_directory(directory: str):
+    if not os.path.exists(directory):
+        raise StorageError(f'Directory {directory} does not exist')
+
+    if not os.access(directory, os.W_OK):
+        raise StorageError(f'Directory {directory} is not writable')
+
+
 def store_data(file_path: str, data: Union[str, bytes]) -> int:
     dir_path = os.path.dirname(file_path)
 
     if not os.path.exists(dir_path):
         os.makedirs(dir_path, DIRECTORY_ACCESS_RIGHTS)
-
-    if not os.access(dir_path, os.W_OK):
-        raise StorageError(f'Directory {dir_path} is not writable')
 
     mode = 'w' if isinstance(data, str) else 'wb'
     encoding = 'utf8' if mode == 'w' else None

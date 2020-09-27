@@ -1,17 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-    <link href="https://cdn.test.com/extra_style.css" rel="stylesheet" type="text/css" media="screen" />
-    <link href="local_path/style.css" rel="stylesheet" type="text/css" media="screen" />
+<meta charset="UTF-8">
+<title>Title</title>
+<link href="http://test.com/local_path/style.css" rel="stylesheet" type="text/css" media="screen" />
+<link href="https://cdn.test.com/style2.css" rel="stylesheet" type="text/css" media="screen" />
 </head>
 <body>
-    <h1>Title</h1>
-    <p>This is a test's html!</p>
-    <img src="local_path/images/image.jpg" alt="Local image" />
-    <img src="https://cdn.test.com/images/extra_image.jpg" alt="Cdn image" />
-    <script type="text/javascript" src="local_path/scripts/script.js"></script>
-    <script type="text/javascript" src="https://cdn.test.com/extra_script.js"></script>
+<h1>Title</h1>
+<p>This is a test's html!</p>
+<img src="local_path/images/image.png" alt="Local image" />
+<img src="/abs/local_path/images/image2.png" alt="Local image" />
+<img src="https://cdn.test.com/images/image3.png" alt="Cdn image" />
+<script type="text/javascript" src="local_path/scripts/script.js"></script>
+<script type="text/javascript" src="/abs/local_path/scripts/script2.js"></script>
+<script type="text/javascript" src="https://cdn.test.com/script3.js"></script>
 </body>
 </html>

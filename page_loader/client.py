@@ -24,7 +24,8 @@ class RequestConnectionError(RequestError):
 
 
 def make_request(url: str, tries: int = 3, delay: int = 2) -> requests.Response:
-    # Делаем ретрай при ошибках сервера или при проблемах с коннектом
+    # Делаем ретрай при ошибках сервера или при проблемах с коннектом,
+    # есть шанс, что удасться загрузить файл
     while tries > 0:
         try:
             response = requests.get(url)
@@ -32,7 +33,9 @@ def make_request(url: str, tries: int = 3, delay: int = 2) -> requests.Response:
         except (RequestServerError, requests.ConnectionError) as e:
             tries -= 1
             if tries == 0:
-                raise RequestConnectionError('Connection error while connecting: {}'.format(str(e)))
+                raise RequestConnectionError(
+                    'Connection error while connecting: {}'.format(str(e))
+                )
             logging.warning('%s, Retrying in %d seconds...', str(e), delay)
             time.sleep(delay)
             delay *= 2
@@ -41,6 +44,8 @@ def make_request(url: str, tries: int = 3, delay: int = 2) -> requests.Response:
 
 
 def raise_for_status(response):
+    # Расширяем дефолтный raise_for_status, чтобы иметь возможность
+    # отлавливать статусы 200 < q < 400 и различать ошибки клиента и сервера
     http_error_msg = ''
     if isinstance(response.reason, bytes):
         try:
