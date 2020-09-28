@@ -1,6 +1,5 @@
 import logging
 import os
-from typing import Union
 from urllib.parse import urlparse
 
 from bs4 import BeautifulSoup
@@ -29,25 +28,14 @@ def make_request_wrapper(url: str) -> Response:
     try:
         return client.make_request(url)
     except client.RequestError as e:
-        logger.exception(str(e))
-
-
-def store_data_wrapper(file_path: str, data: Union[str, bytes]) -> None:
-    # Сохраняем файл на диске, при ошибке пишем в лог
-    # и останавливаем загрузку, т.к., вероятно, ошибка будет
-    # аффектить все остальные файлы
-    try:
-        storage.store_data(file_path, data)
-    except (IOError, OSError, PermissionError) as e:
-        logger.exception(str(e))
-        raise LoadPageError(str(e))
+        logger.error(str(e))
 
 
 def assert_directory_wrapper(directory: str) -> None:
     try:
         storage.assert_directory(directory)
     except storage.StorageError as e:
-        logger.exception(str(e))
+        logger.error(str(e))
         raise LoadPageError(str(e))
 
 
@@ -64,9 +52,18 @@ def build_full_resource_url(url: str, resource_url: str) -> str:
             url_obj.scheme, url_obj.netloc, resource_url
         )
 
-    # Если путь относительный, то добавляем протокол, домен и путь
-    return '{}://{}{}/{}'.format(
-        url_obj.scheme, url_obj.netloc, url_obj.path, resource_url
+    # Если путь относительный, то добавляем протокол, домен и путь без файла
+    path = url_obj.path
+    if '.' in os.path.basename(path):
+        path = os.path.dirname(path)
+    return '{}://{}'.format(
+        url_obj.scheme, '/'.join(
+            filter(
+                None, map(
+                    lambda s: s.strip('/'), [url_obj.netloc, path, resource_url]  # noqa: E501
+                )
+            )
+        )
     )
 
 
@@ -74,6 +71,9 @@ def load_resource(url: str, resource_url: str, directory: str) -> str:
     logger.info('Start load resource `%s`', resource_url)
 
     response = make_request_wrapper(build_full_resource_url(url, resource_url))
+
+    if not response:
+        return ''
 
     resource_subdir = storage.convert_url_to_dir_name(url)
 
@@ -85,7 +85,7 @@ def load_resource(url: str, resource_url: str, directory: str) -> str:
 
     abs_resource_file_path = os.path.join(directory, resource_file_path)
 
-    store_data_wrapper(abs_resource_file_path, response.content)
+    storage.store_data(abs_resource_file_path, response.content)
 
     logger.info(
         'Resource loaded `%s` -> `%s`', resource_url, abs_resource_file_path
@@ -108,7 +108,10 @@ def load_web_page(url: str, directory: str) -> None:
 
     response = make_request_wrapper(url)
 
-    soup = BeautifulSoup(response.text, 'html.parser')
+    if not response:
+        return
+
+    soup = BeautifulSoup(response.content, 'html.parser')
 
     resources = html_handlers.parse_html(soup)
 
@@ -116,7 +119,8 @@ def load_web_page(url: str, directory: str) -> None:
         resources_to_replace[resource_tag] = {}
         for resource_url in resource_urls:
             resource_file_path = load_resource(url, resource_url, directory)
-            resources_to_replace[resource_tag][resource_url] = resource_file_path
+            if resource_file_path:
+                resources_to_replace[resource_tag][resource_url] = resource_file_path  # noqa: E501
 
     html_handlers.modify_html(soup, resources_to_replace)
 
@@ -124,6 +128,6 @@ def load_web_page(url: str, directory: str) -> None:
 
     abs_file_path = os.path.join(directory, file_name)
 
-    store_data_wrapper(abs_file_path, str(soup))
+    storage.store_data(abs_file_path, str(soup))
 
     logger.info('Web page loaded `%s` -> `%s`', url, abs_file_path)

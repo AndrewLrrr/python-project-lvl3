@@ -1,8 +1,8 @@
 lint:
-	poetry run flake8 gendiff
+	poetry run flake8 page_loader
 
 test:
-	poetry run pytest --cov ./page_loader
+	poetry run pytest -o log_cli=True -o log_cli_level=10  --cov=page_loader
 
 build:
 	poetry build

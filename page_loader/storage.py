@@ -17,18 +17,17 @@ def convert_url_to_file_name(url: str, is_html: bool = False) -> str:
 
     split_path = url_obj.path.rsplit('.', 1)
 
-    if len(split_path) == 2:
-        path, ext = split_path
-    else:
-        path = split_path[0]
-        ext = None
+    ext = None
+    # Если в url есть расширение и это не html,
+    # то убираем его, чтобы добавить в конце
+    if len(split_path) == 2 and not is_html:
+        ext = split_path[1]
+        url = url.replace(f'.{ext}', '')
 
-    path = path.strip('/')
+    if url.startswith('http'):
+        url = url.split('//')[-1]
 
-    if url_obj.netloc:
-        path = f'{url_obj.netloc}/{path}'
-
-    path = SYMBOLS_PATTERN.sub('-', path)
+    path = SYMBOLS_PATTERN.sub('-', url.strip('/'))
 
     if ext and not is_html:
         path = '{}.{}'.format(path, ext)
@@ -38,16 +37,18 @@ def convert_url_to_file_name(url: str, is_html: bool = False) -> str:
     return path
 
 
-def convert_url_to_dir_name(url: str, is_html: bool = False) -> str:
-    return '{}_files'.format(convert_url_to_file_name(url).split('.')[0])
+def convert_url_to_dir_name(url: str) -> str:
+    return '{}_files'.format(
+        convert_url_to_file_name(url, is_html=True).split('.')[0]
+    )
 
 
 def assert_directory(directory: str):
     if not os.path.exists(directory):
-        raise StorageError(f'Directory {directory} does not exist')
+        raise StorageError(f'Directory `{directory}` does not exist')
 
-    if not os.access(directory, os.W_OK):
-        raise StorageError(f'Directory {directory} is not writable')
+    if not os.access(directory, os.X_OK | os.W_OK):
+        raise StorageError(f'Directory `{directory}` is not writable')
 
 
 def store_data(file_path: str, data: Union[str, bytes]) -> int:

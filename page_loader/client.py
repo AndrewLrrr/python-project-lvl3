@@ -23,7 +23,7 @@ class RequestConnectionError(RequestError):
     pass
 
 
-def make_request(url: str, tries: int = 3, delay: int = 2) -> requests.Response:
+def make_request(url: str, tries: int = 3, delay: int = 2) -> requests.Response:  # noqa: E501
     # Делаем ретрай при ошибках сервера или при проблемах с коннектом,
     # есть шанс, что удасться загрузить файл
     while tries > 0:
@@ -43,7 +43,7 @@ def make_request(url: str, tries: int = 3, delay: int = 2) -> requests.Response:
             return response
 
 
-def raise_for_status(response):
+def raise_for_status(response: requests.Response):
     # Расширяем дефолтный raise_for_status, чтобы иметь возможность
     # отлавливать статусы 200 < q < 400 и различать ошибки клиента и сервера
     http_error_msg = ''

@@ -17,12 +17,12 @@ TAG_ATTRS = {
 
 def parse_html(soup: BeautifulSoup) -> Dict[str, List[str]]:
     return {
-        tag: [node.get(attr) for node in soup.find_all(tag)]
+        tag: filter(None, [node.get(attr) for node in soup.find_all(tag)])
         for tag, attr in TAG_ATTRS.items()
     }
 
 
-def modify_html(soup: BeautifulSoup, resources: Dict[str, Dict[str, str]]) -> None:
+def modify_html(soup: BeautifulSoup, resources: Dict[str, Dict[str, str]]) -> None:  # noqa: E501
     for resource_tag, resources_to_replace in resources.items():
         for resource_url, resource_path in resources_to_replace.items():
             attr_value = {TAG_ATTRS[resource_tag]: resource_url}
