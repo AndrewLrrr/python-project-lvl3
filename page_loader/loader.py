@@ -1,14 +1,13 @@
 import logging
 import os
 from typing import Dict
-from urllib.parse import urlparse
 
 from bs4 import BeautifulSoup
 from progress.bar import Bar
 from requests import Response
 
 from page_loader import client, storage
-from page_loader import html_handlers
+from page_loader import html_handlers, url_handlers
 
 logger = logging.getLogger(__name__)
 
@@ -17,12 +16,12 @@ class LoadPageError(Exception):
     pass
 
 
-def validate_url(url: str) -> bool:
-    url = urlparse(url)
-    return url.scheme and url.netloc
+def assert_url(url: str) -> None:
+    if not url_handlers.url_is_valid(url):
+        raise LoadPageError(f'Invalid url `{url}`')
 
 
-def make_request_wrapper(url: str) -> Response:
+def make_request(url: str) -> Response:
     # Делаем запрос веб-ресурса, при ошибке пишем в лог,
     # но не останавливаем загрузку страницы, даем загрузиться
     # остальным ресурсам т.к. ошибка может быть не критичной,
@@ -33,47 +32,12 @@ def make_request_wrapper(url: str) -> Response:
         logger.error(str(e))
 
 
-def assert_directory_wrapper(directory: str) -> None:
+def assert_directory(directory: str) -> None:
     try:
         storage.assert_directory(directory)
     except storage.StorageError as e:
         logger.error(str(e))
         raise LoadPageError(str(e))
-
-
-def build_full_resource_url(url: str, resource_url: str) -> str:
-    # Если url полный, возвращаем его
-    if resource_url.startswith('http'):
-        return resource_url
-
-    url_obj = urlparse(url)
-
-    # Отдельно обрабатываем протокол-относительные пути
-    # для них добавляем текущий протокол соединения
-    if resource_url.startswith('//'):
-        return '{}:{}'.format(
-            url_obj.scheme, resource_url
-        )
-
-    # Если путь абсолютный, добавляем протокол и домен
-    if resource_url.startswith('/'):
-        return '{}://{}{}'.format(
-            url_obj.scheme, url_obj.netloc, resource_url
-        )
-
-    # Если путь относительный, то добавляем протокол, домен и путь без файла
-    path = url_obj.path
-    if '.' in os.path.basename(path):
-        path = os.path.dirname(path)
-    return '{}://{}'.format(
-        url_obj.scheme, '/'.join(
-            filter(
-                None, map(
-                    lambda s: s.strip('/'), [url_obj.netloc, path, resource_url]  # noqa: E501
-                )
-            )
-        )
-    )
 
 
 def load_resources(url: str, soup: BeautifulSoup, directory: str) -> Dict[str, Dict[str, str]]:  # noqa: E501
@@ -102,14 +66,14 @@ def load_resources(url: str, soup: BeautifulSoup, directory: str) -> Dict[str, D
 def load_resource(url: str, resource_url: str, directory: str) -> str:
     logger.debug('Start load resource `%s`', resource_url)
 
-    response = make_request_wrapper(build_full_resource_url(url, resource_url))
+    response = make_request(url_handlers.join_urls(url, resource_url))
 
     if not response:
         return ''
 
-    resource_subdir = storage.convert_url_to_dir_name(url)
+    resource_subdir = url_handlers.convert_url_to_dir_name(url)
 
-    resource_file_name = storage.convert_url_to_file_name(
+    resource_file_name = url_handlers.convert_url_to_file_name(
         resource_url, is_html=False
     )
 
@@ -127,16 +91,15 @@ def load_resource(url: str, resource_url: str, directory: str) -> str:
 
 
 def load_web_page(url: str, directory: str) -> None:
-    if not validate_url(url):
-        raise LoadPageError(f'Invalid url `{url}`')
+    assert_url(url)
 
     logger.info('Start load web page `%s` to `%s`', url, directory)
 
     directory = os.path.abspath(directory)
 
-    assert_directory_wrapper(directory)
+    assert_directory(directory)
 
-    response = make_request_wrapper(url)
+    response = make_request(url)
 
     if not response:
         return
@@ -147,7 +110,7 @@ def load_web_page(url: str, directory: str) -> None:
 
     html_handlers.modify_html(soup, resources_to_replace)
 
-    file_name = storage.convert_url_to_file_name(url, is_html=True)
+    file_name = url_handlers.convert_url_to_file_name(url, is_html=True)
 
     abs_file_path = os.path.join(directory, file_name)
 
