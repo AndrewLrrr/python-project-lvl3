@@ -134,26 +134,29 @@ def test_load_php_web_page_with_get_params(requests_get):
 
 
 @mock.patch('requests.get')
-def test_directory_doesnt_exist(requests_get):
-    requests_get.side_effect = request_side_effect
-    with pytest.raises(LoadPageError) as excinfo:
-        load_web_page('http://test.com/test', '/unexpected/directory')
-    assert 'Directory `/unexpected/directory` does not exist' in str(excinfo.value)
-
-
-@mock.patch('requests.get')
-def test_directory_is_not_writable(requests_get):
-    directory = tempfile.TemporaryDirectory()
-    os.chmod(directory.name, 400)
-    requests_get.side_effect = request_side_effect
-    with pytest.raises(LoadPageError) as excinfo:
-        load_web_page('http://test.com/test', directory.name)
-    assert f'Directory `{directory.name}` is not writable' in str(excinfo.value)
-
-
-@mock.patch('requests.get')
 def test_404_error(requests_get):
     requests_get.side_effect = request_404_side_effect
     directory = tempfile.TemporaryDirectory()
     load_web_page('http://test.com/test', directory.name)
     assert not os.listdir(directory.name)
+
+
+def test_directory_doesnt_exist():
+    with pytest.raises(LoadPageError) as excinfo:
+        load_web_page('http://test.com/test', '/unexpected/directory')
+    assert 'Directory `/unexpected/directory` does not exist' in str(excinfo.value)
+
+
+def test_directory_is_not_writable():
+    directory = tempfile.TemporaryDirectory()
+    os.chmod(directory.name, 400)
+    with pytest.raises(LoadPageError) as excinfo:
+        load_web_page('http://test.com/test', directory.name)
+    assert f'Directory `{directory.name}` is not writable' in str(excinfo.value)
+
+
+def test_invalid_url_error():
+    directory = tempfile.TemporaryDirectory()
+    with pytest.raises(LoadPageError) as excinfo:
+        load_web_page('test.com/test', directory.name)
+    assert 'Invalid url `test.com/test`' in str(excinfo.value)

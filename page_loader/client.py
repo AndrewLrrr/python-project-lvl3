@@ -43,7 +43,7 @@ def make_request(url: str, tries: int = 3, delay: int = 2) -> requests.Response:
             return response
 
 
-def raise_for_status(response: requests.Response):
+def raise_for_status(response: requests.Response) -> None:
     # Расширяем дефолтный raise_for_status, чтобы иметь возможность
     # отлавливать статусы 200 < q < 400 и различать ошибки клиента и сервера
     http_error_msg = ''

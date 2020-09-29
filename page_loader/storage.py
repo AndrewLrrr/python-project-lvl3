@@ -7,6 +7,10 @@ DIRECTORY_ACCESS_RIGHTS = 0o755
 
 SYMBOLS_PATTERN = re.compile(r'[^A-Za-z0-9]+')
 
+# Не все ОС любят слишком длинные имена файлов,
+# поэтому ставим ограничение. Наиболее вероятно,
+# избыточность дают гет-параметры в url, поэтому
+# уникальность не должна пострадать
 MAX_FILE_NAME_LENGTH = 128
 
 
@@ -50,7 +54,7 @@ def convert_url_to_dir_name(url: str) -> str:
     )
 
 
-def assert_directory(directory: str):
+def assert_directory(directory: str) -> None:
     if not os.path.exists(directory):
         raise StorageError(f'Directory `{directory}` does not exist')
 

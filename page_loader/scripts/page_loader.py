@@ -8,7 +8,10 @@ from page_loader import log_settings
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('url')
+    parser.add_argument(
+        'url',
+        help='Site url with protocol (http or https)'
+    )
     parser.add_argument(
         '-o', '--output',
         help='Set output directory',
