@@ -17,8 +17,9 @@ TAG_ATTRS = {
 
 def parse_html(soup: BeautifulSoup) -> Dict[str, List[str]]:
     return {
-        tag: filter(None, [node.get(attr) for node in soup.find_all(tag)])
-        for tag, attr in TAG_ATTRS.items()
+        tag: list(
+            filter(None, [node.get(attr) for node in soup.find_all(tag)])
+        ) for tag, attr in TAG_ATTRS.items()
     }
 
 

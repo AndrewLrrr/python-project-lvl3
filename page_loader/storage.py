@@ -24,7 +24,7 @@ def convert_url_to_file_name(url: str, is_html: bool = False) -> str:
         ext = split_path[1]
         url = url.replace(f'.{ext}', '')
 
-    if url.startswith('http'):
+    if url_obj.scheme:
         url = url.split('//')[-1]
 
     path = SYMBOLS_PATTERN.sub('-', url.strip('/'))

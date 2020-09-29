@@ -16,7 +16,7 @@ def main():
     parser.add_argument(
         '-l', '--log-level',
         nargs='?',
-        default=log_settings.LOG_LEVELS[log_settings.INFO],
+        default=log_settings.INFO,
         choices=sorted(log_settings.LOG_LEVELS.keys()),
         help='Set log level',
     )
@@ -30,7 +30,7 @@ def main():
     logging.basicConfig(
         format=log_settings.LOG_FORMAT,
         datefmt=log_settings.LOG_DATE_FORMAT,
-        level=args.log_level,
+        level=log_settings.LOG_LEVELS[args.log_level],
         filename=args.log_file,
     )
 
@@ -42,7 +42,7 @@ def main():
         print(f'{str(e)}. See log for details', file=sys.stderr)
     except Exception as e:
         logger.exception(str(e))
-        print(f'Unexpected error. See log for details', file=sys.stderr)
+        print('Unexpected error. See log for details', file=sys.stderr)
 
 
 if __name__ == '__main__':

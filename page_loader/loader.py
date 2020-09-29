@@ -1,8 +1,10 @@
 import logging
 import os
+from typing import Dict
 from urllib.parse import urlparse
 
 from bs4 import BeautifulSoup
+from progress.bar import Bar
 from requests import Response
 
 from page_loader import client, storage
@@ -46,6 +48,13 @@ def build_full_resource_url(url: str, resource_url: str) -> str:
 
     url_obj = urlparse(url)
 
+    # Отдельно обрабатываем протокол-относительные пути
+    # для них добавляем текущий протокол соединения
+    if resource_url.startswith('//'):
+        return '{}:{}'.format(
+            url_obj.scheme, resource_url
+        )
+
     # Если путь абсолютный, добавляем протокол и домен
     if resource_url.startswith('/'):
         return '{}://{}{}'.format(
@@ -67,8 +76,31 @@ def build_full_resource_url(url: str, resource_url: str) -> str:
     )
 
 
+def load_resources(url: str, soup: BeautifulSoup, directory: str) -> Dict[str, Dict[str, str]]:  # noqa: E501
+    # Будем грузить все ресурсы, которые нашел парсер,
+    # а не только относительные, учитывая,
+    # что сейчас мало кто делает такие пути
+    resources_to_replace = {}
+    resources = html_handlers.parse_html(soup)
+
+    resources_count = sum([len(r) for r in resources.values()])
+    bar = Bar('Processing', max=resources_count)
+
+    for resource_tag, resource_urls in resources.items():
+        resources_to_replace[resource_tag] = {}
+        for resource_url in resource_urls:
+            resource_file_path = load_resource(url, resource_url, directory)
+            bar.next()
+            if resource_file_path:
+                resources_to_replace[resource_tag][resource_url] = resource_file_path  # noqa: E501
+
+    bar.finish()
+
+    return resources_to_replace
+
+
 def load_resource(url: str, resource_url: str, directory: str) -> str:
-    logger.info('Start load resource `%s`', resource_url)
+    logger.debug('Start load resource `%s`', resource_url)
 
     response = make_request_wrapper(build_full_resource_url(url, resource_url))
 
@@ -87,7 +119,7 @@ def load_resource(url: str, resource_url: str, directory: str) -> str:
 
     storage.store_data(abs_resource_file_path, response.content)
 
-    logger.info(
+    logger.debug(
         'Resource loaded `%s` -> `%s`', resource_url, abs_resource_file_path
     )
 
@@ -100,8 +132,6 @@ def load_web_page(url: str, directory: str) -> None:
 
     logger.info('Start load web page `%s` to `%s`', url, directory)
 
-    resources_to_replace = {}
-
     directory = os.path.abspath(directory)
 
     assert_directory_wrapper(directory)
@@ -113,14 +143,7 @@ def load_web_page(url: str, directory: str) -> None:
 
     soup = BeautifulSoup(response.content, 'html.parser')
 
-    resources = html_handlers.parse_html(soup)
-
-    for resource_tag, resource_urls in resources.items():
-        resources_to_replace[resource_tag] = {}
-        for resource_url in resource_urls:
-            resource_file_path = load_resource(url, resource_url, directory)
-            if resource_file_path:
-                resources_to_replace[resource_tag][resource_url] = resource_file_path  # noqa: E501
+    resources_to_replace = load_resources(url, soup, directory)
 
     html_handlers.modify_html(soup, resources_to_replace)
 
