@@ -7,6 +7,8 @@ DIRECTORY_ACCESS_RIGHTS = 0o755
 
 SYMBOLS_PATTERN = re.compile(r'[^A-Za-z0-9]+')
 
+MAX_FILE_NAME_LENGTH = 128
+
 
 class StorageError(Exception):
     pass
@@ -33,6 +35,11 @@ def convert_url_to_file_name(url: str, is_html: bool = False) -> str:
         path = '{}.{}'.format(path, ext)
     else:
         path = '{}.html'.format(path)
+
+    if len(path) > MAX_FILE_NAME_LENGTH:
+        path, ext = path.split('.')
+        max_len = MAX_FILE_NAME_LENGTH - (len(ext) + 1)  # 1 - '.'
+        path = '{}.{}'.format(path[:max_len], ext)
 
     return path
 
