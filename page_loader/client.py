@@ -7,6 +7,10 @@ import requests
 logger = logging.getLogger(__name__)
 
 
+RETRY_TRIES = 3
+RETRY_DELAY = 2
+
+
 class RequestError(Exception):
     pass
 
@@ -23,7 +27,7 @@ class RequestConnectionError(RequestError):
     pass
 
 
-def make_request(url: str, tries: int = 3, delay: int = 2) -> requests.Response:  # noqa: E501
+def make_request(url: str, tries: int = RETRY_TRIES, delay: int = RETRY_DELAY) -> requests.Response:  # noqa: E501
     # Делаем ретрай при ошибках сервера или при проблемах с коннектом,
     # есть шанс, что удасться загрузить файл
     while tries > 0:
@@ -33,9 +37,7 @@ def make_request(url: str, tries: int = 3, delay: int = 2) -> requests.Response:
         except (RequestServerError, requests.ConnectionError) as e:
             tries -= 1
             if tries == 0:
-                raise RequestConnectionError(
-                    'Connection error while connecting: {}'.format(str(e))
-                )
+                raise
             logging.warning('%s, Retrying in %d seconds...', str(e), delay)
             time.sleep(delay)
             delay *= 2

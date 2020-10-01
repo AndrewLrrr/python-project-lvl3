@@ -3,8 +3,11 @@ import tempfile
 from unittest import mock
 
 import pytest
+import requests
 
+from page_loader.client import RequestServerError, RETRY_TRIES, RequestError
 from page_loader.loader import load_web_page, LoadPageError
+from page_loader import url_handlers
 
 EXPECTED_RESPONSE_FILES = {
     k: os.path.abspath(p) for k, p in {
@@ -139,6 +142,37 @@ def test_404_error(requests_get):
     directory = tempfile.TemporaryDirectory()
     load_web_page('http://test.com/test', directory.name)
     assert not os.listdir(directory.name)
+    assert requests_get.call_count == 1
+
+
+@mock.patch('page_loader.client.raise_for_status')
+@mock.patch('requests.get')
+def test_not_200_error_without_retry(requests_get, raise_for_status):
+    raise_for_status.side_effect = RequestError('Some client Error')
+    directory = tempfile.TemporaryDirectory()
+    load_web_page('http://test.com/test', directory.name)
+    assert requests_get.call_count == 1
+
+
+@mock.patch('time.sleep')
+@mock.patch('page_loader.client.raise_for_status')
+@mock.patch('requests.get')
+def test_500_error_retry(requests_get, raise_for_status, sleep):
+    sleep.return_value = None
+    raise_for_status.side_effect = RequestServerError('Server Error')
+    directory = tempfile.TemporaryDirectory()
+    load_web_page('http://test.com/test', directory.name)
+    assert requests_get.call_count == RETRY_TRIES
+
+
+@mock.patch('time.sleep')
+@mock.patch('requests.get')
+def test_connection_error_retry(requests_get, sleep):
+    sleep.return_value = None
+    requests_get.side_effect = requests.ConnectionError('Connection Error')
+    directory = tempfile.TemporaryDirectory()
+    load_web_page('http://test.com/test', directory.name)
+    assert requests_get.call_count == RETRY_TRIES
 
 
 def test_directory_doesnt_exist():
@@ -160,3 +194,15 @@ def test_invalid_url_error():
     with pytest.raises(LoadPageError) as excinfo:
         load_web_page('test.com/test', directory.name)
     assert 'Invalid url `test.com/test`' in str(excinfo.value)
+
+
+def test_crop_long_file_name_from_url():
+    url = 'http://test.com/?q=' + 'A' * 300
+    file_name = url_handlers.convert_url_to_file_name(url)
+    assert len(file_name) == url_handlers.MAX_FILE_NAME_LENGTH
+
+
+def test_crop_long_dir_name_from_url():
+    url = 'http://test.com/?q=' + 'A' * 300
+    dir_name = url_handlers.convert_url_to_dir_name(url)
+    assert len(dir_name) == url_handlers.MAX_FILE_NAME_LENGTH

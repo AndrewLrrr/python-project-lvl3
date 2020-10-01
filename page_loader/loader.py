@@ -2,6 +2,7 @@ import logging
 import os
 from typing import Dict
 
+import requests
 from bs4 import BeautifulSoup
 from progress.bar import Bar
 from requests import Response
@@ -28,7 +29,7 @@ def make_request(url: str) -> Response:
     # 302 или 404, например.
     try:
         return client.make_request(url)
-    except client.RequestError as e:
+    except (client.RequestError, requests.ConnectionError) as e:
         logger.error(str(e))
 
 

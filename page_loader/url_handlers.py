@@ -10,6 +10,15 @@ SYMBOLS_PATTERN = re.compile(r'[^A-Za-z0-9]+')
 MAX_FILE_NAME_LENGTH = 128
 
 
+def crop_file_or_dir_name(name: str) -> str:
+    if len(name) > MAX_FILE_NAME_LENGTH:
+        separator = '.' if '.' in name else '_'
+        path, ext = name.split(separator)
+        max_len = MAX_FILE_NAME_LENGTH - (len(ext) + 1)  # 1 - '.'
+        name = '{}.{}'.format(name[:max_len], ext)
+    return name
+
+
 def convert_url_to_file_name(url: str, is_html: bool = False) -> str:
     url_obj = urlparse(url)
 
@@ -25,25 +34,21 @@ def convert_url_to_file_name(url: str, is_html: bool = False) -> str:
     if url_obj.scheme:
         url = url.split('//')[-1]
 
-    path = SYMBOLS_PATTERN.sub('-', url.strip('/'))
+    name = SYMBOLS_PATTERN.sub('-', url.strip('/'))
 
     if ext and not is_html:
-        path = '{}.{}'.format(path, ext)
+        name = '{}.{}'.format(name, ext)
     else:
-        path = '{}.html'.format(path)
+        name = '{}.html'.format(name)
 
-    if len(path) > MAX_FILE_NAME_LENGTH:
-        path, ext = path.split('.')
-        max_len = MAX_FILE_NAME_LENGTH - (len(ext) + 1)  # 1 - '.'
-        path = '{}.{}'.format(path[:max_len], ext)
-
-    return path
+    return crop_file_or_dir_name(name)
 
 
 def convert_url_to_dir_name(url: str) -> str:
-    return '{}_files'.format(
+    name = '{}_files'.format(
         convert_url_to_file_name(url, is_html=True).split('.')[0]
     )
+    return crop_file_or_dir_name(name)
 
 
 def url_is_valid(url: str) -> bool:
