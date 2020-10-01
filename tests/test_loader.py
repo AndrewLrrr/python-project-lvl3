@@ -29,11 +29,9 @@ EXPECTED_REQUEST_URLS = {
     'http://test.com/test.php?foo=bar': 'html',
     'http://test.com/local_path/style.css': 'link',
     'https://cdn.test.com/style2.css': 'link2',
-    'http://test.com/test/local_path/images/image.png': 'img',
     'http://test.com/local_path/images/image.png': 'img',
     'http://test.com/abs/local_path/images/image2.png': 'img2',
     'https://cdn.test.com/images/image3.png': 'img3',
-    'http://test.com/test/local_path/scripts/script.js': 'script',
     'http://test.com/local_path/scripts/script.js': 'script',
     'http://test.com/abs/local_path/scripts/script2.js': 'script2',
     'https://cdn.test.com/script3.js': 'script3',
@@ -48,11 +46,11 @@ EXPECTED_MODIFIED_URL_TEMPLATES = {
 EXPECTED_SAVED_RESOURCE_PATHS = {
     'link': 'test-com-local-path-style.css',
     'link2': 'cdn-test-com-style2.css',
-    'img': 'local-path-images-image.png',
-    'img2': 'abs-local-path-images-image2.png',
+    'img': 'test-com-local-path-images-image.png',
+    'img2': 'test-com-abs-local-path-images-image2.png',
     'img3': 'cdn-test-com-images-image3.png',
-    'script': 'local-path-scripts-script.js',
-    'script2': 'abs-local-path-scripts-script2.js',
+    'script': 'test-com-local-path-scripts-script.js',
+    'script2': 'test-com-abs-local-path-scripts-script2.js',
     'script3': 'cdn-test-com-script3.js',
 }
 

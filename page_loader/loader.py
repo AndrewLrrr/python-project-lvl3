@@ -67,7 +67,13 @@ def load_resources(url: str, soup: BeautifulSoup, directory: str) -> Dict[str, D
 def load_resource(url: str, resource_url: str, directory: str) -> str:
     logger.debug('Start load resource `%s`', resource_url)
 
-    response = make_request(url_handlers.join_urls(url, resource_url))
+    resource_url = url_handlers.join_urls(url, resource_url)
+
+    if not url_handlers.url_is_valid(resource_url):
+        logger.warning('Resource url %s is not valid', resource_url)
+        return ''
+
+    response = make_request(resource_url)
 
     if not response:
         return ''

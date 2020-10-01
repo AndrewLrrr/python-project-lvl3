@@ -13,7 +13,10 @@ MAX_FILE_NAME_LENGTH = 128
 def crop_file_or_dir_name(name: str) -> str:
     if len(name) > MAX_FILE_NAME_LENGTH:
         separator = '.' if '.' in name else '_'
-        path, ext = name.split(separator)
+        name_paths = name.split(separator)
+        if len(name_paths) == 1:
+            return name[:MAX_FILE_NAME_LENGTH]
+        path, ext = name_paths
         max_len = MAX_FILE_NAME_LENGTH - (len(ext) + 1)  # 1 - '.'
         name = '{}.{}'.format(name[:max_len], ext)
     return name
@@ -22,24 +25,25 @@ def crop_file_or_dir_name(name: str) -> str:
 def convert_url_to_file_name(url: str, is_html: bool = False) -> str:
     url_obj = urlparse(url)
 
-    split_path = url_obj.path.rsplit('.', 1)
+    paths = url_obj.path.rsplit('.', 1)
 
     ext = None
     # Если в url есть расширение и это не html,
     # то убираем его, чтобы добавить в конце
-    if len(split_path) == 2 and not is_html:
-        ext = split_path[1]
+    if len(paths) == 2 and not is_html:
+        ext = paths[1]
         url = url.replace(f'.{ext}', '')
+
+    if is_html:
+        ext = 'html'
 
     if url_obj.scheme:
         url = url.split('//')[-1]
 
     name = SYMBOLS_PATTERN.sub('-', url.strip('/'))
 
-    if ext and not is_html:
+    if ext:
         name = '{}.{}'.format(name, ext)
-    else:
-        name = '{}.html'.format(name)
 
     return crop_file_or_dir_name(name)
 
