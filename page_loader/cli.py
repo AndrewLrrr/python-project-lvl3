@@ -1,9 +1,17 @@
 import argparse
 
-from page_loader import log_settings
+
+LOG_LEVELS = (
+    'CRITICAL',
+    'ERROR',
+    'WARNING',
+    'INFO',
+    'DEBUG',
+    'NOTSET',
+)
 
 
-def parse_input_args():
+def get_args_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         'url',
@@ -16,8 +24,8 @@ def parse_input_args():
     parser.add_argument(
         '-l', '--log-level',
         nargs='?',
-        default=log_settings.INFO,
-        choices=sorted(log_settings.LOG_LEVELS.keys()),
+        default='WARNING',
+        choices=LOG_LEVELS,
         help='Set log level',
     )
     parser.add_argument(
@@ -25,4 +33,4 @@ def parse_input_args():
         help='Set log file',
     )
 
-    return parser.parse_args()
+    return parser

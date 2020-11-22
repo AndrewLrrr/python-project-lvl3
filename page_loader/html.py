@@ -15,17 +15,19 @@ TAG_ATTRS = {
 }
 
 
-def parse_html(soup: BeautifulSoup) -> Dict[str, List[str]]:
+def get_resources(html: str) -> Dict[str, List[str]]:
+    soup = BeautifulSoup(html, 'html.parser')
     return {
-        tag: list(
-            filter(None, [node.get(attr) for node in soup.find_all(tag)])
-        ) for tag, attr in TAG_ATTRS.items()
+        tag: [node.get(attr) for node in soup.find_all(tag)]
+        for tag, attr in TAG_ATTRS.items()
     }
 
 
-def modify_html(soup: BeautifulSoup, resources: Dict[str, Dict[str, str]]) -> None:  # noqa: E501
+def replace_resources(html: str, resources: Dict[str, Dict[str, str]]) -> str:
+    soup = BeautifulSoup(html, 'html.parser')
     for resource_tag, resources_to_replace in resources.items():
         for resource_url, resource_path in resources_to_replace.items():
             attr_value = {TAG_ATTRS[resource_tag]: resource_url}
             node = soup.find(resource_tag, attrs=attr_value)
             node[TAG_ATTRS[resource_tag]] = resource_path
+    return str(soup)
