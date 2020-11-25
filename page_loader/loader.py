@@ -110,7 +110,8 @@ def download_resources(
 
 def download_resource(
         url_path: str,
-        resource_url: str, resource_path: str
+        resource_url: str,
+        resource_path: str
 ) -> None:
     logging.info('Start load resource `%s`', resource_url)
 
