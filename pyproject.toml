@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "avatara_page-loader"
+name = "hexlet-code"
 version = "0.2.0"
 description = "Web-page loader"
 authors = ["Andrey Larin <larin.projects@gmail.com>"]
