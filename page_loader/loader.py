@@ -18,7 +18,10 @@ def make_request(url_path: str) -> requests.Response:
 
 def assert_directory(directory: str) -> None:
     if not os.path.exists(directory):
-        raise NotADirectoryError(f'Directory `{directory}` does not exist')
+        raise FileNotFoundError(f'Directory `{directory}` does not exist')
+
+    if not os.path.isdir(directory):
+        raise NotADirectoryError(f'Path `{directory}` is not a directory')
 
     if not os.access(directory, os.W_OK):
         raise PermissionError(f'Directory `{directory}` is not writable')

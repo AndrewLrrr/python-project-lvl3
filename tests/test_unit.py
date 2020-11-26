@@ -15,13 +15,13 @@ def test_url_to_file_name():
 
 def test_url_to_file_name_with_ext():
     url = 'http://test.com/test.php'
-    expected = 'test-com-test-php.html'
+    expected = 'test-com-test.html'
     assert expected == page_loader.url.to_file_name(url, extension='html')
 
 
 def test_url_to_dir_name():
     url = 'http://test.com/test.php'
-    expected = 'test-com-test-php_files'
+    expected = 'test-com-test_files'
     assert expected == page_loader.url.to_dir_name(url)
 
 
@@ -52,17 +52,17 @@ def test_handle_resources():
 
     expected = {
         page_loader.html.IMG_TAG: {
-            '/f/img1.jpg': 'test-com-test-html_files/f-img1.jpg',
-            '/f/img2.jpg': 'test-com-test-html_files/f-img2.jpg',
-            'http://test.com/img.png': 'test-com-test-html_files/test-com-img.png'
+            '/f/img1.jpg': 'test-com-test_files/f-img1.jpg',
+            '/f/img2.jpg': 'test-com-test_files/f-img2.jpg',
+            'http://test.com/img.png': 'test-com-test_files/test-com-img.png'
         },
         page_loader.html.LINK_TAG: {
-            '/f/style.css': 'test-com-test-html_files/f-style.css',
-            '/f/style2.css': 'test-com-test-html_files/f-style2.css',
-            'http://test.com/style.css': 'test-com-test-html_files/test-com-style.css',
+            '/f/style.css': 'test-com-test_files/f-style.css',
+            '/f/style2.css': 'test-com-test_files/f-style2.css',
+            'http://test.com/style.css': 'test-com-test_files/test-com-style.css',
         },
         page_loader.html.SCRIPT_TAG: {
-            '/f/script.js': 'test-com-test-html_files/f-script.js',
+            '/f/script.js': 'test-com-test_files/f-script.js',
         },
     }
 
@@ -115,9 +115,16 @@ def test_handle_resources_with_versions(url_to_file_name):
 
 
 def test_directory_doesnt_exist():
-    with pytest.raises(NotADirectoryError) as excinfo:
+    with pytest.raises(FileNotFoundError) as excinfo:
         page_loader.download('http://test.com/test', '/unexpected/directory')
     assert 'Directory `/unexpected/directory` does not exist' in str(excinfo.value)
+
+
+def test_directory_is_file():
+    directory = os.path.abspath('tests/fixtures/test.html')
+    with pytest.raises(NotADirectoryError) as excinfo:
+        page_loader.download('http://test.com/test', directory)
+    assert 'Path `{}` is not a directory'.format(directory) in str(excinfo.value)
 
 
 def test_directory_is_not_writable():

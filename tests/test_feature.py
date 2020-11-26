@@ -21,9 +21,9 @@ EXPECTED_RESPONSE_FILES = {
 
 EXPECTED_MODIFIED_URL_TEMPLATES = {
     'http://test.com/': 'test-com{}',
-    'http://test.com/test.html': 'test-com-test-html{}',
-    'http://test.com/test.php': 'test-com-test-php{}',
-    'http://test.com/test.html?foo=bar&baz=test': 'test-com-test-html{}',
+    'http://test.com/test.html': 'test-com-test{}',
+    'http://test.com/test.php': 'test-com-test{}',
+    'http://test.com/test.html?foo=bar&baz=test': 'test-com-test{}',
 }
 
 EXPECTED_REQUEST_URLS = {
