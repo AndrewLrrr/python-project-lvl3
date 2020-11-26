@@ -12,7 +12,7 @@ EXPECTED_RESPONSE_FILES = {
         'link2': 'tests/fixtures/style2.css',
         'img': 'tests/fixtures/image.png',
         'img2': 'tests/fixtures/image2.png',
-        'img3': 'tests/fixtures/image3.png',
+        'img3': 'tests/fixtures/image2.png',
         'script': 'tests/fixtures/script.js',
         'script2': 'tests/fixtures/script2.js',
         'script3': 'tests/fixtures/script3.js',
@@ -20,21 +20,21 @@ EXPECTED_RESPONSE_FILES = {
 }
 
 EXPECTED_MODIFIED_URL_TEMPLATES = {
-    'http://test.com/test': 'test-com-test{}',
+    'http://test.com/': 'test-com{}',
     'http://test.com/test.html': 'test-com-test-html{}',
     'http://test.com/test.php': 'test-com-test-php{}',
-    'http://test.com/test.html?foo=bar&baz=test':
-        'test-com-test-html-foo-bar-baz-test{}',
+    'http://test.com/test.html?foo=bar&baz=test': 'test-com-test-html{}',
 }
 
 EXPECTED_REQUEST_URLS = {
-    'http://test.com/test': 'html',
+    'http://test.com/': 'html',
     'http://test.com/test.html': 'html',
     'http://test.com/test.php': 'html',
     'http://test.com/test.html?foo=bar&baz=test': 'html',
     'http://test.com/local_path/style.css': 'link',
     'http://test.com/local_path/images/image.png': 'img',
     'http://test.com/abs/local_path/images/image2.png': 'img2',
+    'http://test.com/abs/local_path/images/image2.png?v=123': 'img3',
     'http://test.com/local_path/scripts/script.js': 'script',
     'http://test.com/abs/local_path/scripts/script2.js': 'script2',
 }
@@ -43,6 +43,7 @@ EXPECTED_SAVED_RESOURCE_PATHS = (
     ('link', 'test-com-local-path-style.css'),
     ('img', 'test-com-local-path-images-image.png'),
     ('img2', 'abs-local-path-images-image2.png'),
+    ('img3', 'abs-local-path-images-image2_v2.png'),
     ('script', 'local-path-scripts-script.js'),
     ('script2', 'abs-local-path-scripts-script2.js'),
 )
@@ -116,7 +117,7 @@ def assert_load_web_page(url_path):
 @mock.patch('requests.get')
 def test_load_web_page(requests_get):
     requests_get.side_effect = request_side_effect
-    assert_load_web_page('http://test.com/test')
+    assert_load_web_page('http://test.com/')
 
 
 @mock.patch('requests.get')

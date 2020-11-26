@@ -25,38 +25,6 @@ def test_url_to_dir_name():
     assert expected == page_loader.url.to_dir_name(url)
 
 
-def test_crop_long_file_name():
-    file_name = 'test-com-q-' + 'A' * (page_loader.MAX_FILE_NAME_LENGTH + 10) + '.css'
-    assert len(file_name) > page_loader.MAX_FILE_NAME_LENGTH
-    file_name = page_loader.crop_path(file_name)
-    assert len(file_name) == page_loader.MAX_FILE_NAME_LENGTH
-    assert file_name.endswith('.css')
-
-
-def test_crop_long_dir_name():
-    dir_name = 'test-com-q-' + 'A' * (page_loader.MAX_FILE_NAME_LENGTH + 10) + '_files'
-    assert len(dir_name) > page_loader.MAX_FILE_NAME_LENGTH
-    dir_name = page_loader.crop_path(dir_name)
-    assert len(dir_name) == page_loader.MAX_FILE_NAME_LENGTH
-    assert dir_name.endswith('_files')
-
-
-def test_crop_long_file_name_with_version():
-    file_name = 'test-com-q-' + 'A' * (page_loader.MAX_FILE_NAME_LENGTH + 10) + '_v2.css'
-    assert len(file_name) > page_loader.MAX_FILE_NAME_LENGTH
-    file_name = page_loader.crop_path(file_name)
-    assert len(file_name) == page_loader.MAX_FILE_NAME_LENGTH
-    assert file_name.endswith('_v2.css')
-
-
-def test_crop_long_dir_name_with_version():
-    dir_name = 'test-com-q-' + 'A' * (page_loader.MAX_FILE_NAME_LENGTH + 10) + '_v2_files'
-    assert len(dir_name) > page_loader.MAX_FILE_NAME_LENGTH
-    dir_name = page_loader.crop_path(dir_name)
-    assert len(dir_name) == page_loader.MAX_FILE_NAME_LENGTH
-    assert dir_name.endswith('_v2_files')
-
-
 def test_handle_resources():
     url_path = 'http://test.com/test.html'
 
@@ -154,7 +122,7 @@ def test_directory_doesnt_exist():
 
 def test_directory_is_not_writable():
     directory = tempfile.TemporaryDirectory()
-    os.chmod(directory.name, 400)
+    os.chmod(directory.name, 0o400)
     with pytest.raises(PermissionError) as excinfo:
         page_loader.download('http://test.com/test', directory.name)
     assert f'Directory `{directory.name}` is not writable' in str(excinfo.value)

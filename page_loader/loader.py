@@ -10,9 +10,6 @@ from progress.bar import Bar
 from page_loader import html, storage, url
 
 
-MAX_FILE_NAME_LENGTH = 128
-
-
 def make_request(url_path: str) -> requests.Response:
     response = requests.get(url_path)
     response.raise_for_status()
@@ -23,29 +20,8 @@ def assert_directory(directory: str) -> None:
     if not os.path.exists(directory):
         raise NotADirectoryError(f'Directory `{directory}` does not exist')
 
-    if not os.access(directory, os.X_OK | os.W_OK):
+    if not os.access(directory, os.W_OK):
         raise PermissionError(f'Directory `{directory}` is not writable')
-
-
-def crop_path(path: str) -> str:
-    if len(path) > MAX_FILE_NAME_LENGTH:
-        ext = ''
-        version = ''
-
-        if '.' in path:
-            path, ext = os.path.splitext(path)
-        elif path.endswith('_files'):
-            path = path.rsplit('_', 1)[0]
-            ext = '_files'
-
-        if '_v' in path:
-            path, version = path.rsplit('_', 1)
-            version = '_{}'.format(version)
-
-        max_len = MAX_FILE_NAME_LENGTH - (len(ext) + len(version))
-
-        path = '{}{}{}'.format(path[:max_len], version, ext)
-    return path
 
 
 def handle_resources(
@@ -55,7 +31,7 @@ def handle_resources(
     paths_versions = defaultdict(int)
     filtered_resources = defaultdict(dict)
     url_obj = urlsplit(url_path)
-    directory = crop_path(url.to_dir_name(url_path))
+    directory = url.to_dir_name(url_path)
 
     for tag, resource_urls in resources.items():
         for resource_url in resource_urls:
@@ -70,7 +46,7 @@ def handle_resources(
                 url_obj.netloc == resource_url_obj.netloc
                 or resource_url_obj.netloc == ''
             ):
-                resource_path = crop_path(url.to_file_name(resource_url))
+                resource_path = url.to_file_name(resource_url)
                 if resource_path in paths_versions:
                     version = paths_versions[resource_path]
                     paths_versions[resource_path] += 1
@@ -80,7 +56,6 @@ def handle_resources(
                         ver=version + 1,
                         ext=ext,
                     )
-                    resource_path = crop_path(resource_path)
                 else:
                     paths_versions[resource_path] += 1
                 resource_path = os.path.join(directory, resource_path)
@@ -132,7 +107,7 @@ def download(url_path: str, directory: str) -> None:
     html_content = response.content
     resources = handle_resources(url_path, html.get_resources(html_content))
 
-    file_name = crop_path(url.to_file_name(url_path, extension='html'))
+    file_name = url.to_file_name(url_path, extension='html')
     abs_file_path = os.path.join(directory, file_name)
     html_content = html.replace_resources(html_content, resources)
     storage.save(abs_file_path, html_content)
