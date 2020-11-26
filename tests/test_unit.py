@@ -16,7 +16,13 @@ def test_url_to_file_name():
 def test_url_to_file_name_with_ext():
     url = 'http://test.com/test.php'
     expected = 'test-com-test.html'
-    assert expected == page_loader.url.to_file_name(url, extension='html')
+    assert expected == page_loader.url.to_file_name(url, force_extension='html')
+
+
+def test_url_to_file_name_without_ext():
+    url = 'http://test.com/test'
+    expected = 'test-com-test.html'
+    assert expected == page_loader.url.to_file_name(url)
 
 
 def test_url_to_dir_name():
@@ -25,7 +31,7 @@ def test_url_to_dir_name():
     assert expected == page_loader.url.to_dir_name(url)
 
 
-def test_handle_resources():
+def test_process_resources():
     url_path = 'http://test.com/test.html'
 
     resources = {
@@ -52,30 +58,30 @@ def test_handle_resources():
 
     expected = {
         page_loader.html.IMG_TAG: {
-            '/f/img1.jpg': 'test-com-test_files/f-img1.jpg',
-            '/f/img2.jpg': 'test-com-test_files/f-img2.jpg',
+            '/f/img1.jpg': 'test-com-test_files/test-com-f-img1.jpg',
+            '/f/img2.jpg': 'test-com-test_files/test-com-f-img2.jpg',
             'http://test.com/img.png': 'test-com-test_files/test-com-img.png'
         },
         page_loader.html.LINK_TAG: {
-            '/f/style.css': 'test-com-test_files/f-style.css',
-            '/f/style2.css': 'test-com-test_files/f-style2.css',
-            'http://test.com/style.css': 'test-com-test_files/test-com-style.css',
+            '/f/style.css': 'test-com-test_files/test-com-f-style.css',
+            '/f/style2.css': 'test-com-test_files/test-com-f-style2.css',
+            'http://test.com/style.css': 'test-com-test_files/test-com-style.css',  # noqa: E501
         },
         page_loader.html.SCRIPT_TAG: {
-            '/f/script.js': 'test-com-test_files/f-script.js',
+            '/f/script.js': 'test-com-test_files/test-com-f-script.js',
         },
     }
 
-    assert expected == page_loader.handle_resources(url_path, resources)
+    assert expected == page_loader.process_resources(url_path, resources)
 
 
 @mock.patch('page_loader.url.to_file_name')
-def test_handle_resources_with_versions(url_to_file_name):
+def test_process_resources_with_versions(url_to_file_name):
     def side_effect(url, extension=None):
         if url == 'http://test.com/':
             return 'test-com'
         else:
-            return 'the-same-file-path-{ext}.{ext}'.format(ext=url.rsplit('.', 1)[1])
+            return 'the-same-file-path-{ext}.{ext}'.format(ext=url.rsplit('.', 1)[1])  # noqa: E501
 
     url_to_file_name.side_effect = side_effect
 
@@ -111,20 +117,20 @@ def test_handle_resources_with_versions(url_to_file_name):
         },
     }
 
-    assert expected == page_loader.handle_resources('http://test.com/', resources)
+    assert expected == page_loader.process_resources('http://test.com/', resources)  # noqa: E501
 
 
 def test_directory_doesnt_exist():
     with pytest.raises(FileNotFoundError) as excinfo:
         page_loader.download('http://test.com/test', '/unexpected/directory')
-    assert 'Directory `/unexpected/directory` does not exist' in str(excinfo.value)
+    assert 'Directory `/unexpected/directory` does not exist' in str(excinfo.value)  # noqa: E501
 
 
 def test_directory_is_file():
     directory = os.path.abspath('tests/fixtures/test.html')
     with pytest.raises(NotADirectoryError) as excinfo:
         page_loader.download('http://test.com/test', directory)
-    assert 'Path `{}` is not a directory'.format(directory) in str(excinfo.value)
+    assert 'Path `{}` is not a directory'.format(directory) in str(excinfo.value)  # noqa: E501
 
 
 def test_directory_is_not_writable():
@@ -132,4 +138,4 @@ def test_directory_is_not_writable():
     os.chmod(directory.name, 0o400)
     with pytest.raises(PermissionError) as excinfo:
         page_loader.download('http://test.com/test', directory.name)
-    assert f'Directory `{directory.name}` is not writable' in str(excinfo.value)
+    assert f'Directory `{directory.name}` is not writable' in str(excinfo.value)  # noqa: E501

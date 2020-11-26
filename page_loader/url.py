@@ -6,7 +6,8 @@ from urllib.parse import urlparse
 SAFE_PATH_CHARS = re.compile(r'[^A-Za-z0-9]+')
 
 
-def to_file_name(url: str, extension: Optional[str] = None) -> str:
+def to_file_name(url: str, force_extension: Optional[str] = None) -> str:
+    extension = force_extension
     url_obj = urlparse(url)
 
     paths = os.path.splitext(url_obj.path)
@@ -18,10 +19,7 @@ def to_file_name(url: str, extension: Optional[str] = None) -> str:
 
     name = SAFE_PATH_CHARS.sub('-', url.strip('/'))
 
-    if extension:
-        name = '{}.{}'.format(name, extension)
-
-    return name
+    return '{}.{}'.format(name, extension or 'html')
 
 
 def to_dir_name(url: str) -> str:
