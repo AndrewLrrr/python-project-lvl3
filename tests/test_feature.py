@@ -2,6 +2,8 @@ import os
 import tempfile
 from unittest import mock
 
+from requests import HTTPError
+
 import page_loader
 
 
@@ -67,7 +69,8 @@ class FakeResponse:
             self.text = ''
 
     def raise_for_status(self):
-        pass
+        if self.status_code > 400:
+            raise HTTPError
 
 
 def read_file(file_path, mode='rb', *args, **kwargs):
@@ -82,7 +85,30 @@ def request_side_effect(url):
     return FakeResponse(url=url, content=content)
 
 
-def assert_modified_html_content(html, resource_directory):
+def request_side_effect_with_errors(url):
+    if url in (
+        'http://test.com/local_path/images/image.png',
+        'http://test.com/local_path/scripts/script.js',
+    ):
+        return FakeResponse(url=url, content=b'Not Found', status_code=404)
+
+    return request_side_effect(url)
+
+
+def load_web_page(url_path):
+    directory = tempfile.TemporaryDirectory()
+    page_loader.download(url_path, directory.name)
+    return directory
+
+
+def assert_modified_html_content(url_path, directory):
+    html_file_name = EXPECTED_MODIFIED_URL_TEMPLATES[url_path].format('.html')
+    file_path = os.path.join(directory, html_file_name)
+    html = read_file(file_path, mode='r', encoding='utf8')
+
+    resource_directory = EXPECTED_MODIFIED_URL_TEMPLATES[url_path].format(
+        '_files'
+    )
     for file_type, file_name in EXPECTED_SAVED_RESOURCE_PATHS:
         resource_path = f'"{resource_directory}/{file_name}"'
         assert resource_path in html
@@ -90,28 +116,26 @@ def assert_modified_html_content(html, resource_directory):
         assert file_url in html
 
 
-def assert_resources_loaded(directory, resource_directory):
-    for file_type, file_name in EXPECTED_SAVED_RESOURCE_PATHS:
-        file_path = os.path.join(directory, resource_directory, file_name)
-        assert os.path.exists(file_path)
-        content = read_file(EXPECTED_RESPONSE_FILES[file_type])
-        expected_content = read_file(file_path)
-        assert content == expected_content
-
-
-def assert_load_web_page(url_path):
-    directory = tempfile.TemporaryDirectory()
-    page_loader.download(url_path, directory.name)
-
+def assert_resources_loaded(url_path, directory, skipped=None):
+    skipped = [] if skipped is None else skipped
     resource_directory = EXPECTED_MODIFIED_URL_TEMPLATES[url_path].format(
         '_files'
     )
-    assert_resources_loaded(directory.name, resource_directory)
+    for file_type, file_name in EXPECTED_SAVED_RESOURCE_PATHS:
+        file_path = os.path.join(directory, resource_directory, file_name)
+        if file_name not in skipped:
+            assert os.path.exists(file_path)
+            content = read_file(EXPECTED_RESPONSE_FILES[file_type])
+            expected_content = read_file(file_path)
+            assert content == expected_content
+        else:
+            assert not os.path.exists(file_path)
 
-    html_file_name = EXPECTED_MODIFIED_URL_TEMPLATES[url_path].format('.html')
-    file_path = os.path.join(directory.name, html_file_name)
-    html = read_file(file_path, mode='r', encoding='utf8')
-    assert_modified_html_content(html, resource_directory)
+
+def assert_load_web_page(url_path):
+    directory = load_web_page(url_path)
+    assert_resources_loaded(url_path, directory.name)
+    assert_modified_html_content(url_path, directory.name)
 
 
 @mock.patch('requests.get')
@@ -136,3 +160,16 @@ def test_load_web_page_with_not_html_extension(requests_get):
 def test_load_web_page_with_get_params(requests_get):
     requests_get.side_effect = request_side_effect
     assert_load_web_page('http://test.com/test.html?foo=bar&baz=test')
+
+
+@mock.patch('requests.get')
+def test_load_resources_with_http_errors(requests_get):
+    requests_get.side_effect = request_side_effect_with_errors
+    url_path = 'http://test.com/test.html'
+    skipped_files = (
+        'test-com-local-path-images-image.png',
+        'local-path-scripts-script.js',
+    )
+    directory = load_web_page(url_path)
+    assert_modified_html_content(url_path, directory.name)
+    assert_resources_loaded(url_path, directory.name, skipped=skipped_files)

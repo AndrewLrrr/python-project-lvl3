@@ -100,7 +100,7 @@ def download_resource(
     logging.info('Resource loaded `%s` -> `%s`', resource_url, resource_path)
 
 
-def download(url_path: str, directory: str) -> None:
+def download(url_path: str, directory: str) -> str:
     logging.info('Start load web page `%s` to `%s`', url_path, directory)
 
     directory = os.path.abspath(directory)
@@ -118,3 +118,5 @@ def download(url_path: str, directory: str) -> None:
     download_resources(url_path, directory, resources)
 
     logging.info('Web page loaded `%s` -> `%s`', url_path, abs_file_path)
+
+    return abs_file_path
