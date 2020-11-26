@@ -30,4 +30,4 @@ def replace_resources(html: str, resources: Dict[str, Dict[str, str]]) -> str:
             attr_value = {TAG_ATTRS[resource_tag]: resource_url}
             node = soup.find(resource_tag, attrs=attr_value)
             node[TAG_ATTRS[resource_tag]] = resource_path
-    return str(soup)
+    return soup.prettify(formatter='html5')
