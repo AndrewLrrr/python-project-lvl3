@@ -14,11 +14,9 @@ EXPECTED_RESPONSE_FILES = {
         'link': 'tests/fixtures/style.css',
         'link2': 'tests/fixtures/style2.css',
         'img': 'tests/fixtures/image.png',
-        'img2': 'tests/fixtures/image2.png',
-        'img3': 'tests/fixtures/image2.png',
+        'img2': 'tests/fixtures/image2.jpg',
         'script': 'tests/fixtures/script.js',
         'script2': 'tests/fixtures/script2.js',
-        'script3': 'tests/fixtures/script3.js',
     }.items()
 }
 
@@ -28,6 +26,7 @@ EXPECTED_MODIFIED_URL_TEMPLATES = {
     'http://test.com/test.php': 'test-com-test{}',
     'http://test.com/test.html?foo=bar&baz=test': 'test-com-test{}',
     'http://test.com/empty': 'test-com-empty{}',
+    'http://test.com/versions': 'test-com-versions{}',
 }
 
 EXPECTED_REQUEST_URLS = {
@@ -38,26 +37,30 @@ EXPECTED_REQUEST_URLS = {
     'http://test.com/empty': 'html2',
     'http://test.com/local_path/style.css': 'link',
     'http://test.com/local_path/images/image.png': 'img',
-    'http://test.com/abs/local_path/images/image2.png': 'img2',
-    'http://test.com/abs/local_path/images/image2.png?v=123': 'img3',
+    'http://test.com/abs/local_path/images/image2.jpg': 'img2',
     'http://test.com/local_path/scripts/script.js': 'script',
     'http://test.com/abs/local_path/scripts/script2.js': 'script2',
 }
 
-EXPECTED_SAVED_RESOURCE_PATHS = (
-    ('link', 'test-com-local-path-style.css'),
-    ('img', 'test-com-local-path-images-image.png'),
-    ('img2', 'test-com-abs-local-path-images-image2.png'),
-    ('img3', 'test-com-abs-local-path-images-image2_v2.png'),
-    ('script', 'test-com-local-path-scripts-script.js'),
-    ('script2', 'test-com-abs-local-path-scripts-script2.js'),
-)
+EXPECTED_SAVED_RESOURCE_PATHS = {
+    'html': {
+        ('link', 'test-com-local-path-style.css'),
+        ('img', 'test-com-local-path-images-image.png'),
+        ('img2', 'test-com-abs-local-path-images-image2.jpg'),
+        ('script', 'test-com-local-path-scripts-script.js'),
+        ('script2', 'test-com-abs-local-path-scripts-script2.js'),
+    },
+    'html2': {}
+}
 
-EXPECTED_SKIPPED_RESOURCE_PATHS = (
-    'https://cdn.test.com/style2.css',
-    'https://cdn.test.com/images/image3.png',
-    'https://cdn.somesite.com/script3.js',
-)
+EXPECTED_SKIPPED_RESOURCE_PATHS = {
+    'html': [
+        'https://cdn.test.com/style2.css',
+        'https://cdn.test.com/images/image3.png',
+        'https://cdn.somesite.com/script3.js',
+    ],
+    'html2': [],
+}
 
 
 class FakeResponse:
@@ -107,26 +110,34 @@ def load_web_page(url_path):
 def assert_modified_html_content(url_path, directory):
     html_file_name = EXPECTED_MODIFIED_URL_TEMPLATES[url_path].format('.html')
     file_path = os.path.join(directory, html_file_name)
-    html = read_file(file_path, mode='r', encoding='utf8')
-
+    html_content = read_file(file_path, mode='r', encoding='utf8')
     resource_directory = EXPECTED_MODIFIED_URL_TEMPLATES[url_path].format(
         '_files'
     )
-    for file_type, file_name in EXPECTED_SAVED_RESOURCE_PATHS:
+    downloaded_resources = EXPECTED_SAVED_RESOURCE_PATHS[
+        EXPECTED_REQUEST_URLS[url_path]
+    ]
+    skipped_resources = EXPECTED_SKIPPED_RESOURCE_PATHS[
+        EXPECTED_REQUEST_URLS[url_path]
+    ]
+    for file_type, file_name in downloaded_resources:
         resource_path = f'"{resource_directory}/{file_name}"'
-        assert resource_path in html
-    for file_url in EXPECTED_SKIPPED_RESOURCE_PATHS:
-        assert file_url in html
+        assert resource_path in html_content
+    for file_url in skipped_resources:
+        assert file_url in html_content
 
 
-def assert_resources_loaded(url_path, directory, skipped=None):
-    skipped = [] if skipped is None else skipped
+def assert_resources_loaded(url_path, directory, skipped_resources=None):
+    skipped_resources = [] if skipped_resources is None else skipped_resources
     resource_directory = EXPECTED_MODIFIED_URL_TEMPLATES[url_path].format(
         '_files'
     )
-    for file_type, file_name in EXPECTED_SAVED_RESOURCE_PATHS:
+    downloaded_files = EXPECTED_SAVED_RESOURCE_PATHS[
+        EXPECTED_REQUEST_URLS[url_path]
+    ]
+    for file_type, file_name in downloaded_files:
         file_path = os.path.join(directory, resource_directory, file_name)
-        if file_name not in skipped:
+        if file_name not in skipped_resources:
             assert os.path.exists(file_path)
             content = read_file(EXPECTED_RESPONSE_FILES[file_type])
             expected_content = read_file(file_path)
@@ -175,24 +186,19 @@ def test_load_resources_with_http_errors(requests_get):
     )
     directory = load_web_page(url_path)
     assert_modified_html_content(url_path, directory.name)
-    assert_resources_loaded(url_path, directory.name, skipped=skipped_files)
+    assert_resources_loaded(
+        url_path, directory.name, skipped_resources=skipped_files
+    )
 
 
 @mock.patch('requests.get')
 def test_load_without_resources(requests_get):
-    requests_get.side_effect = request_side_effect_with_errors
+    requests_get.side_effect = request_side_effect
     url_path = 'http://test.com/empty'
     directory = load_web_page(url_path)
-
-    resource_html = EXPECTED_MODIFIED_URL_TEMPLATES[url_path].format(
-        '.html'
-    )
     resource_directory = EXPECTED_MODIFIED_URL_TEMPLATES[url_path].format(
         '_files'
     )
-
-    html_file_path = os.path.join(directory.name, resource_html)
     resources_path = os.path.join(directory.name, resource_directory)
-
-    assert os.path.isfile(html_file_path)
     assert not os.path.exists(resources_path)
+    assert_modified_html_content(url_path, directory.name)

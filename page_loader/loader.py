@@ -1,8 +1,7 @@
 import logging
 import os
-from collections import defaultdict
-from typing import Dict, List
-from urllib.parse import urljoin, urlparse
+from typing import List, Tuple
+from urllib.parse import urljoin
 
 import requests
 from progress.bar import Bar
@@ -18,73 +17,32 @@ def make_request(url_path: str) -> requests.Response:
 
 def assert_directory(directory: str) -> None:
     if not os.path.exists(directory):
-        raise FileNotFoundError(f'Directory `{directory}` does not exist')
+        raise FileNotFoundError(f'No such file or directory: `{directory}`')
 
     if not os.path.isdir(directory):
-        raise NotADirectoryError(f'Path `{directory}` is not a directory')
+        raise NotADirectoryError(f'Not a directory: `{directory}`')
 
     if not os.access(directory, os.W_OK):
-        raise PermissionError(f'Directory `{directory}` is not writable')
-
-
-def process_resources(
-        url_path: str, resources: Dict[str, List[str]]
-) -> Dict[str, Dict[str, str]]:
-    paths_versions = defaultdict(int)
-    filtered_resources = defaultdict(dict)
-    url_obj = urlparse(url_path)
-    directory = url.to_dir_name(url_path)
-
-    for tag, resource_urls in resources.items():
-        for resource_url in resource_urls:
-            if not resource_url or resource_url in filtered_resources[tag]:
-                continue
-
-            resource_url_obj = urlparse(resource_url)
-            if (
-                url_obj.netloc == resource_url_obj.netloc
-                or resource_url_obj.netloc == ''  # noqa: W503
-            ):
-                resource_path = url.to_file_name(
-                    urljoin(url_path, resource_url)
-                )
-                if resource_path in paths_versions:
-                    version = paths_versions[resource_path]
-                    paths_versions[resource_path] += 1
-                    resource_path, ext = os.path.splitext(resource_path)
-                    resource_path = '{path}_v{ver}{ext}'.format(
-                        path=resource_path,
-                        ver=version + 1,
-                        ext=ext,
-                    )
-                else:
-                    paths_versions[resource_path] += 1
-                resource_path = os.path.join(directory, resource_path)
-                filtered_resources[tag][resource_url] = resource_path
-
-    return filtered_resources
+        raise PermissionError(f'Read-only file system: `{directory}`')
 
 
 def download_resources(
-        url_path: str, directory: str, resources: Dict[str, Dict[str, str]]
+        url_path: str, directory: str, resources: List[Tuple[str, str]]
 ) -> None:
-    resources_count = sum([len(r) for r in resources.values()])
-
-    with Bar('Processing', max=resources_count) as bar:
-        for resource_items in resources.values():
-            for resource_url, resource_path in resource_items.items():
-                logging.info('Start load resource `%s`', resource_url)
-                resource_path = os.path.join(directory, resource_path)
-                try:
-                    response = make_request(urljoin(url_path, resource_url))
-                    storage.save(resource_path, response.content)
-                except requests.HTTPError as e:
-                    logging.warning(str(e))
-                    continue
-                bar.next()
-                logging.info(
-                    'Resource loaded `%s` -> `%s`', resource_url, resource_path
-                )
+    with Bar('Processing', max=len(resources)) as bar:
+        for resource_url, resource_path in resources:
+            logging.info('Start load resource `%s`', resource_url)
+            resource_path = os.path.join(directory, resource_path)
+            try:
+                response = make_request(urljoin(url_path, resource_url))
+                storage.save(resource_path, response.content)
+            except requests.HTTPError as e:
+                logging.warning(str(e))
+                continue
+            bar.next()
+            logging.info(
+                'Resource loaded `%s` -> `%s`', resource_url, resource_path
+            )
 
 
 def download(url_path: str, directory: str) -> str:
@@ -94,12 +52,10 @@ def download(url_path: str, directory: str) -> str:
     assert_directory(directory)
 
     response = make_request(url_path)
-    html_content = response.content
-    resources = process_resources(url_path, html.get_resources(html_content))
+    html_content, resources = html.process(url_path, response.content)
 
     file_name = url.to_file_name(url_path, force_extension='html')
     abs_file_path = os.path.join(directory, file_name)
-    html_content = html.replace_resources(html_content, resources)
     storage.save(abs_file_path, html_content)
 
     if resources:

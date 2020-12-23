@@ -11,14 +11,11 @@ def to_file_name(url: str, force_extension: Optional[str] = None) -> str:
     url_obj = urlparse(url)
 
     paths = os.path.splitext(url_obj.path)
-
     if len(paths) == 2 and extension is None:
         extension = paths[1].lstrip('.')
 
     url = '{}{}'.format(url_obj.netloc, paths[0])
-
     name = SAFE_PATH_CHARS.sub('-', url.strip('/'))
-
     return '{}.{}'.format(name, extension or 'html')
 
 
