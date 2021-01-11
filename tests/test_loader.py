@@ -53,15 +53,6 @@ EXPECTED_SAVED_RESOURCE_PATHS = {
     'html2': {}
 }
 
-EXPECTED_SKIPPED_RESOURCE_PATHS = {
-    'html': [
-        'https://cdn.test.com/style2.css',
-        'https://cdn.test.com/images/image3.png',
-        'https://cdn.somesite.com/script3.js',
-    ],
-    'html2': [],
-}
-
 
 class FakeResponse:
     def __init__(self, url, content, reason='', status_code=200):
@@ -110,21 +101,13 @@ def load_web_page(url_path):
 def assert_modified_html_content(url_path, directory):
     html_file_name = EXPECTED_MODIFIED_URL_TEMPLATES[url_path].format('.html')
     file_path = os.path.join(directory, html_file_name)
-    html_content = read_file(file_path, mode='r', encoding='utf8')
-    resource_directory = EXPECTED_MODIFIED_URL_TEMPLATES[url_path].format(
-        '_files'
+    html_content = read_file(file_path, )
+
+    expected_file_path = os.path.abspath(
+        os.path.join('tests/fixtures/expected_html', html_file_name)
     )
-    downloaded_resources = EXPECTED_SAVED_RESOURCE_PATHS[
-        EXPECTED_REQUEST_URLS[url_path]
-    ]
-    skipped_resources = EXPECTED_SKIPPED_RESOURCE_PATHS[
-        EXPECTED_REQUEST_URLS[url_path]
-    ]
-    for file_type, file_name in downloaded_resources:
-        resource_path = f'"{resource_directory}/{file_name}"'
-        assert resource_path in html_content
-    for file_url in skipped_resources:
-        assert file_url in html_content
+
+    assert html_content == read_file(expected_file_path)
 
 
 def assert_resources_loaded(url_path, directory, skipped_resources=None):

@@ -1,5 +1,5 @@
 import argparse
-
+import os
 
 LOG_LEVELS = (
     'CRITICAL',
@@ -10,6 +10,10 @@ LOG_LEVELS = (
     'NOTSET',
 )
 
+DEFAULT_LOG_LEVEL = 'WARNING'
+
+DEFAULT_DIRECTORY = os.getcwd()
+
 
 def get_args_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
@@ -19,18 +23,19 @@ def get_args_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         '-o', '--output',
-        help='Set output directory',
+        default=DEFAULT_DIRECTORY,
+        help=f'Output directory. Default `{DEFAULT_DIRECTORY}`',
     )
     parser.add_argument(
         '-l', '--log-level',
         nargs='?',
-        default='WARNING',
+        default=DEFAULT_LOG_LEVEL,
         choices=LOG_LEVELS,
-        help='Set log level',
+        help=f'Log level. Default `{DEFAULT_LOG_LEVEL}`',
     )
     parser.add_argument(
         '-f', '--log-file',
-        help='Set log file',
+        help='Log file',
     )
 
     return parser

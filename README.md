@@ -1,6 +1,6 @@
 # Проект: Загрузчик страниц
 
-[![Build Status](https://travis-ci.org/AndrewLrrr/python-project-lvl3.svg?branch=master)](https://travis-ci.org/AndrewLrrr/python-project-lvl3)
+![Python CI](https://github.com/AndrewLrrr/python-project-lvl3/workflows/Python%20CI/badge.svg?branch=master)
 [![Maintainability](https://api.codeclimate.com/v1/badges/2d1e1a8bc96a1705794b/maintainability)](https://codeclimate.com/github/AndrewLrrr/python-project-lvl3/maintainability)
 [![Test Coverage](https://api.codeclimate.com/v1/badges/2d1e1a8bc96a1705794b/test_coverage)](https://codeclimate.com/github/AndrewLrrr/python-project-lvl3/test_coverage)
 ![hexlet-check](https://github.com/AndrewLrrr/python-project-lvl3/workflows/hexlet-check/badge.svg)
