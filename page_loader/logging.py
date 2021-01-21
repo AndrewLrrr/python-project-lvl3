@@ -1,7 +1,7 @@
 import logging
 
 
-LOG_FORMAT = '%(asctime)s %(message)s'
+LOG_FORMAT = '%(asctime)s %(levelname)s %(message)s'
 LOG_DATE_FORMAT = '%H:%M:%S %d/%m/%Y'
 
 
